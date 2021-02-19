@@ -131,3 +131,24 @@ function loadScript(url, callback)
     // Fire the loading
     head.appendChild(script);
 }
+
+
+function destroy(id) {
+    flvPlayer[id].destroy();
+}
+
+function load(id) {
+    flvPlayer[id].load();
+}
+
+function unload(id) {
+    flvPlayer[id].unload();
+}
+
+function play(id) {
+    flvPlayer[id].play();
+}
+
+function pause(id) {
+    flvPlayer[id].pause();
+}

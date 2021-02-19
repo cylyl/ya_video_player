@@ -40,7 +40,7 @@ class _VideoPlayerState extends State<YaVideoPlayer> {
     if (kIsWeb) {
       return SizedBox(
         width: 800,
-        child: widget.controller.getView(),
+        child: widget?.controller.getView(),
       );
     } else {
       _extPlayer = VideoPlayer(widget?.controller);
@@ -66,7 +66,8 @@ class YaVideoPlayerController extends VideoPlayerController {
         super.asset(dataSource);
 
   YaVideoPlayerController.network(String dataSource)
-      : _isFlv = kIsWeb && dataSource.endsWith("flv"),
+      :
+        _isFlv = kIsWeb && dataSource.endsWith("flv"),
         super.network(dataSource);
 
   YaVideoPlayerController.file(File file) :

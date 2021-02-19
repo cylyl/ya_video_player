@@ -7,26 +7,33 @@ import 'dart:async';
 // package as the core of your plugin.
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
-
 import 'package:ya_video_player/ya_video_player_interface.dart';
-
 import 'shims/dart_ui.dart' as ui; // Conditionally imports dart:ui in web
-
 import 'package:flutter/material.dart';
 import 'package:js/js.dart';
 import 'package:import_js_library/import_js_library.dart';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
-
 import 'package:video_player_platform_interface/video_player_platform_interface.dart'
     show DataSource, VideoEvent, VideoEventType, DurationRange, DataSourceType;
 
-@JS('alert') external String alert(Object obj);
-@JS('init') external void init();
-@JS('videojs') external void videojs(String id);
+@JS('alert')
+external String alert(Object obj);
+@JS('init')
+external void jInit();
+@JS('destroy')
+external void jDestroy(int id);
+@JS('load')
+external void jLoad(int id);
+@JS('unload')
+external void jUnload(int id);
+@JS('play')
+external void jPlay(int id);
+@JS('pause')
+external void jPause(int id);
 
-
+@JS('videojs')
+external void videojs(String id);
 
 // An error code value to error name Map.
 // See: https://developer.mozilla.org/en-US/docs/Web/API/MediaError/code
@@ -51,11 +58,8 @@ const Map<int, String> _kErrorValueToErrorDescription = {
 const String _kDefaultErrorMessage =
     'No further diagnostic information can be determined or provided.';
 
-
 /// A web implementation of the YaVideoPlayer plugin.
 class YaVideoPlayerWeb extends YaVideoPlayerInterface {
-
-
   int _textureCounter = 1;
   Map<int, _VideoPlayer> _videoPlayers = <int, _VideoPlayer>{};
 
@@ -73,7 +77,8 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
 //        flutterPluginName: "ya_video_player");
 //    importJsLibrary(url: "./assets/videojs-flvjs.js",
 //        flutterPluginName: "ya_video_player");
-    importJsLibrary(url: "./assets/ya-video-player.js",
+    importJsLibrary(
+        url: "./assets/ya-video-player.js",
         flutterPluginName: "ya_video_player");
 
     final pluginInstance = YaVideoPlayerWeb();
@@ -81,33 +86,54 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
     YaVideoPlayerInterface.setInstance(pluginInstance);
   }
 
-
   /// Handles method calls over the MethodChannel of this plugin.
   /// Note: Check the "federated" architecture for a new way of doing this:
   /// https://flutter.dev/go/federated-plugins
   Future<dynamic> handleMethodCall(MethodCall call) async {
-
-    print(call.method);
+    print('handleMethodCall  > ' + call.method);
     switch (call.method) {
-      case'init': return init(); break;
-      case'dispose': return dispose(call.arguments); break;
-      case'create':
-      case'setLooping': return setLooping(call.arguments); break;
-      case'play': return play(call.arguments); break;
-      case'pause': return pause(call.arguments); break;
-      case'setVolume': return setVolume(call.arguments); break;
-      case'seekTo': return seekTo(call.arguments); break;
-      case'setPlaybackSpeed': return setPlaybackSpeed(call.arguments); break;
-      case'getPosition': return getPosition(call.arguments); break;
-      case'setMixWithOthers': return setMixWithOthers(call.arguments); break;
-      case'videoEventsFor': return videoEventsFor(call.arguments); break;
+      case 'init':
+        return init();
+        break;
+      case 'dispose':
+        return dispose(call.arguments);
+        break;
+      case 'create':
+      case 'setLooping':
+        return setLooping(call.arguments);
+        break;
+      case 'play':
+        return play(call.arguments);
+        break;
+      case 'pause':
+        return pause(call.arguments);
+        break;
+      case 'setVolume':
+        return setVolume(call.arguments);
+        break;
+      case 'seekTo':
+        return seekTo(call.arguments);
+        break;
+      case 'setPlaybackSpeed':
+        return setPlaybackSpeed(call.arguments);
+        break;
+      case 'getPosition':
+        return getPosition(call.arguments);
+        break;
+      case 'setMixWithOthers':
+        return setMixWithOthers(call.arguments);
+        break;
+      case 'videoEventsFor':
+        return videoEventsFor(call.arguments);
+        break;
       case 'getPlatformVersion':
         return getPlatformVersion();
         break;
       default:
         throw PlatformException(
           code: 'Unimplemented',
-          details: 'ya_video_player for web doesn\'t implement \'${call.method}\'',
+          details:
+              'ya_video_player for web doesn\'t implement \'${call.method}\'',
         );
     }
   }
@@ -125,7 +151,6 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
         loading.add(scriptTag.onLoad.first);
       }
     });
-
     return Future.wait(loading);
   }
 
@@ -154,24 +179,22 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
     return Future.value(version);
   }
 
-  Future<void> init() {
-
-  }
+  Future<void> init() {}
 
   Future<void> dispose(int textureId) {
-
+    _videoPlayers[textureId]?.dispose();
   }
 
-  Future<int> create(DataSource dataSource, Completer<void> creatingCompleter) async {
-
+  Future<int> create(
+      DataSource dataSource, Completer<void> creatingCompleter) async {
     final int textureId = _textureCounter;
     _textureCounter++;
 
     String uri;
     switch (dataSource.sourceType) {
       case DataSourceType.network:
-      // Do NOT modify the incoming uri, it can be a Blob, and Safari doesn't
-      // like blobs that have changed.
+        // Do NOT modify the incoming uri, it can be a Blob, and Safari doesn't
+        // like blobs that have changed.
         uri = dataSource.uri;
         break;
       case DataSourceType.asset:
@@ -192,8 +215,6 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
       textureId: textureId,
     );
 
-    player.buildView();
-
     _videoPlayers[textureId] = player;
     creatingCompleter.complete(null);
 
@@ -202,73 +223,66 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
   }
 
   Future<void> setLooping(List<dynamic> args) {
-
     int textureId = args[0];
     bool looping = args[1];
-
+    _videoPlayers[textureId]?.setLooping(looping);
   }
 
   Future<void> play(int textureId) {
-
+    _videoPlayers[textureId]?.play();
   }
 
   Future<void> pause(int textureId) {
-
+    _videoPlayers[textureId]?.pause();
   }
 
   Future<void> setVolume(List<dynamic> args) {
-
     int textureId = args[0];
     double volume = args[1];
 
+    _videoPlayers[textureId]?.setVolume(volume);
   }
 
   Future<void> seekTo(List<dynamic> args) {
-
     int textureId = args[0];
     Duration position = args[1];
-
+    _videoPlayers[textureId]?.seekTo(position);
   }
 
   Future<void> setPlaybackSpeed(List<dynamic> args) {
-
     int textureId = args[0];
     double speed = args[1];
-
-
+    _videoPlayers[textureId]?.setPlaybackSpeed(speed);
   }
 
   Future<Duration> getPosition(int textureId) {
-
+    return Future.value(_videoPlayers[textureId]?.getPosition());
   }
 
-  Future<void> setMixWithOthers(bool mixWithOthers) {
-
-  }
+  Future<void> setMixWithOthers(bool mixWithOthers) {}
 
   @override
   Stream<VideoEvent> videoEventsFor(int textureId) {
-    return _videoPlayers[textureId].eventController.stream;
+    return _videoPlayers[textureId]?.eventController.stream;
   }
 
-  static String _getViewType(int textureId) => 'plugins.ya_video_player_$textureId';
+  static String _getViewType(int textureId) =>
+      'plugins.ya_video_player_$textureId';
 
   getView(int textureId) {
-    return _videoPlayers[textureId].widget;
+    return _videoPlayers[textureId]?.playerView;
   }
-
 }
-
 
 class _VideoPlayer {
   _VideoPlayer({this.uri, this.textureId});
 
   final StreamController<VideoEvent> eventController =
-  StreamController<VideoEvent>();
+      StreamController<VideoEvent>();
 
   final String uri;
   final int textureId;
-  HtmlElementView widget;
+  HtmlElementView playerView;
   html.VideoElement videoElement;
   html.DivElement divElement;
   bool isInitialized = false;
@@ -299,19 +313,17 @@ class _VideoPlayer {
 //    divElement = html.querySelector('div');
 //    videoElement = html.querySelector('#ya_player')
     videoElement = html.VideoElement()
-    ..width = 800
-    ..id = 'ya_player' + textureId.toString()
-//    ..attributes = {
-//      'id' : 'ya_player',
+      ..attributes = {
+        'id': 'ya_player' + textureId.toString(),
+        'width': '800',
 //      'class' : 'video-js  vjs-default-skin' ,
 //      'data-setup' :  '{}',
-//      'controls' : '',
-//      'autoplay' : '',
+        'controls': '',
+        'autoplay': '',
 //      'preload' : 'auto',
 //      'liveui' : 'true',
-//      'playsinline' : 'true'
-//    }
-    ;
+        'playsinline': 'true'
+      };
 //    videoElement.children = [html.SourceElement()
 //    ..src = uri
 //    ..type = "video/" + _getType(uri)
@@ -323,31 +335,40 @@ class _VideoPlayer {
 
     divElement = html.DivElement();
 
+//    html.ButtonElement playBtn = html.ButtonElement()
+//      ..text = "Play";
+//    playBtn.onClick.listen((event) {
+//      jPlay(textureId);
+//    });
+//    html.ButtonElement pauseBtn = html.ButtonElement()
+//      ..text = "Pause";
+//    pauseBtn.onClick.listen((event) {
+//      jPause(textureId);
+//    });
+
     divElement.children = [
       html.DivElement()
         ..children = [
           videoElement,
+//          playBtn,
+//          pauseBtn ,
           html.ScriptElement()
-          ///https://github.com/flutter/flutter/issues/40080
-            ..text ="init($textureId, '$uri');"
+            ///https://github.com/flutter/flutter/issues/40080
+            ..text = "init($textureId, '$uri');"
         ]
     ];
 
     // TODO(hterkelsen): Use initialization parameters once they are available
     ui.platformViewRegistry.registerViewFactory(
-        YaVideoPlayerWeb._getViewType(textureId),
-            (int viewId) => divElement);
+        YaVideoPlayerWeb._getViewType(textureId), (int viewId) => divElement);
 
-    widget = HtmlElementView(
+    playerView = HtmlElementView(
       viewType: YaVideoPlayerWeb._getViewType(textureId),
     );
   }
 
   void initialize() {
-
-//    Future.delayed(const Duration(milliseconds: 5000), () {
-//      init();
-//    });
+    buildView();
 
     videoElement.onCanPlay.listen((dynamic _) {
       if (!isInitialized) {
@@ -382,42 +403,23 @@ class _VideoPlayer {
   }
 
   Future<void> play() {
-    return videoElement.play().catchError((e) {
-      // play() attempts to begin playback of the media. It returns
-      // a Promise which can get rejected in case of failure to begin
-      // playback for any reason, such as permission issues.
-      // The rejection handler is called with a DomException.
-      // See: https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/play
-      html.DomException exception = e;
-      eventController.addError(PlatformException(
-        code: exception.name,
-        message: exception.message,
-      ));
-    }, test: (e) => e is html.DomException);
+    jPlay(textureId);
   }
 
   void pause() {
-    videoElement.pause();
+    jPause(textureId);
   }
 
   void setLooping(bool value) {
-    videoElement.loop = value;
+    print('un-support setLooping');
   }
 
   void setVolume(double value) {
-    // TODO: Do we need to expose a "muted" API? https://github.com/flutter/flutter/issues/60721
-    if (value > 0.0) {
-      videoElement.muted = false;
-    } else {
-      videoElement.muted = true;
-    }
-    videoElement.volume = value;
+    print('un-support setVolume');
   }
 
   void setPlaybackSpeed(double speed) {
-    assert(speed > 0);
-
-    videoElement.playbackRate = speed;
+    print('un-support setPlaybackSpeed');
   }
 
   void seekTo(Duration position) {
@@ -432,7 +434,8 @@ class _VideoPlayer {
     eventController.add(
       VideoEvent(
         eventType: VideoEventType.initialized,
-///TODO
+
+        ///TODO
 //        duration: Duration(
 //          milliseconds: (videoElement.duration * 1000).round(),
 //        ),
@@ -445,8 +448,8 @@ class _VideoPlayer {
   }
 
   void dispose() {
-    videoElement.removeAttribute('src');
-    videoElement.load();
+    jUnload(textureId);
+    jDestroy(textureId);
   }
 
   List<DurationRange> _toDurationRange(html.TimeRanges buffered) {
@@ -461,11 +464,11 @@ class _VideoPlayer {
   }
 
   String _getType(String uri) {
-    if(uri.endsWith("mp4")) return "mp4";
-    if(uri.endsWith("m3u8")) return "x-mpegURL";
-    if(uri.endsWith("flv")) return "x-flv";
-    else return "mp4";
+    if (uri.endsWith("mp4")) return "mp4";
+    if (uri.endsWith("m3u8")) return "x-mpegURL";
+    if (uri.endsWith("flv"))
+      return "x-flv";
+    else
+      return "mp4";
   }
-
-
 }
