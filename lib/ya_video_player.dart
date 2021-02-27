@@ -38,10 +38,7 @@ class _VideoPlayerState extends State<YaVideoPlayer> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      return SizedBox(
-        width: 800,
-        child: widget?.controller.getView(),
-      );
+      return widget?.controller.getView() ;
     } else {
       _extPlayer = VideoPlayer(widget?.controller);
       return _extPlayer;
@@ -152,7 +149,7 @@ class YaVideoPlayerController extends VideoPlayerController {
   }
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize({Size size=Size.zero}) async {
     if (_isFlv) {
       _creatingCompleter = Completer<void>();
 
@@ -185,13 +182,66 @@ class YaVideoPlayerController extends VideoPlayerController {
             .invokeMethod('setMixWithOthers', videoPlayerOptions.mixWithOthers);
       }
 
-      _interface
-          ?.create(dataSourceDescription, _creatingCompleter)
-          .asStream()
-          .listen((event) {
-        _textureId = event;
-      });
-      return _creatingCompleter.future;
+      _textureId = (await _interface.create(dataSourceDescription, _creatingCompleter, size: size)) ?? -1;
+      _creatingCompleter.complete(null);
+
+      final Completer<void> initializingCompleter = Completer<void>();
+
+      void eventListener(VideoEvent event) {
+        if (_isDisposed) {
+          return;
+        }
+
+        switch (event.eventType) {
+          case VideoEventType.initialized:
+            value = value.copyWith(
+              duration: event.duration,
+              size: event.size,
+//              isInitialized: event.duration != null,
+            );
+            initializingCompleter.complete(null);
+//            _applyLooping();
+//            _applyVolume();
+//            _applyPlayPause();
+            break;
+          case VideoEventType.completed:
+            value = value.copyWith(isPlaying: false, position: value.duration);
+            _timer?.cancel();
+            break;
+          case VideoEventType.bufferingUpdate:
+            value = value.copyWith(buffered: event.buffered);
+            break;
+          case VideoEventType.bufferingStart:
+            value = value.copyWith(isBuffering: true);
+            break;
+          case VideoEventType.bufferingEnd:
+            value = value.copyWith(isBuffering: false);
+            break;
+          case VideoEventType.unknown:
+            break;
+        }
+      }
+
+//      if (closedCaptionFile != null) {
+//        if (_closedCaptionFile == null) {
+//          _closedCaptionFile = await closedCaptionFile;
+//        }
+//        value = value.copyWith(caption: _getCaptionAt(value.position));
+//      }
+
+      void errorListener(Object obj) {
+        final PlatformException e = obj as PlatformException;
+//        value = VideoPlayerValue.erroneous(e.message!);
+        _timer?.cancel();
+        if (!initializingCompleter.isCompleted) {
+          initializingCompleter.completeError(obj);
+        }
+      }
+
+      _eventSubscription = _interface
+          .videoEventsFor(_textureId)
+          .listen(eventListener, onError: errorListener);
+      return initializingCompleter.future;
     } else {
       return await super.initialize();
     }

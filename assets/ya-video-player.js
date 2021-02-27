@@ -6,20 +6,26 @@
 
 var videoElement
 var flvPlayer=[];
-function init(id, url){
-//    loadScript('assets/packages/ya_video_player/assets/flv.min.js',
-    initReady(id, url)
-//    )
-    ;
+
+function getVidElement(id){
+
+    var views = window.document.getElementsByTagName('flt-platform-view');
+    for (var v of views) {
+        var vid = v.shadowRoot.getElementById('ya_player' + id);
+        if(vid != null ) return vid;
+    }
 }
-function initReady(id, url){
+
+function init(id, url){
 
     if (flvjs.isSupported()) {
-        videoElement = window.document.getElementsByTagName('flt-platform-view')[0].shadowRoot.getElementById('ya_player' + id);
+        videoElement = getVidElement(id);
+        //window.document.getElementsByTagName('flt-platform-view')[0].shadowRoot.getElementById('ya_player' + id);
         flvPlayer[id] = flvjs.createPlayer({
         type: 'flv',
         isLive: true,
-        url: url
+        url: url,
+        hasAudio: false,
         });
         flvPlayer[id].attachMediaElement(videoElement);
         flvPlayer[id].load();

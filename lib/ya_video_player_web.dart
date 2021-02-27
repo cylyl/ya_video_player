@@ -20,7 +20,7 @@ import 'package:video_player_platform_interface/video_player_platform_interface.
 @JS('alert')
 external String alert(Object obj);
 @JS('init')
-external void jInit();
+external void jInit(int id, String url);
 @JS('destroy')
 external void jDestroy(int id);
 @JS('load')
@@ -186,7 +186,7 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
   }
 
   Future<int> create(
-      DataSource dataSource, Completer<void> creatingCompleter) async {
+      DataSource dataSource, Completer<void> creatingCompleter, {Size size}) async {
     final int textureId = _textureCounter;
     _textureCounter++;
 
@@ -216,9 +216,11 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
     );
 
     _videoPlayers[textureId] = player;
+
+    player.initialize(size: size);
+
     creatingCompleter.complete(null);
 
-    player.initialize();
     return textureId;
   }
 
@@ -270,7 +272,11 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
       'plugins.ya_video_player_$textureId';
 
   getView(int textureId) {
-    return _videoPlayers[textureId]?.playerView;
+    return _videoPlayers[textureId]?.playerView ?? Container();
+  }
+
+  void Function(int id) sendInitialized(textureId) {
+    _videoPlayers[textureId]?.sendInitialized();
   }
 }
 
@@ -287,7 +293,7 @@ class _VideoPlayer {
   html.DivElement divElement;
   bool isInitialized = false;
 
-  void buildView() {
+  void buildView({Size size=Size.zero}) {
     /**
      *
         <div>
@@ -312,18 +318,28 @@ class _VideoPlayer {
      */
 //    divElement = html.querySelector('div');
 //    videoElement = html.querySelector('#ya_player')
-    videoElement = html.VideoElement()
-      ..attributes = {
-        'id': 'ya_player' + textureId.toString(),
-        'width': '800',
+
+
+
+
+
+    Map<String, String>  vidAttrs = {
+    'id': 'ya_player' + textureId.toString(),
+    'width': size.width.toString(),
+    'height': size.height.toString(),
 //      'class' : 'video-js  vjs-default-skin' ,
 //      'data-setup' :  '{}',
-        'controls': '',
-        'autoplay': '',
+    'controls': '',
+    'autoplay': '',
+//        'muted': '',
 //      'preload' : 'auto',
 //      'liveui' : 'true',
-        'playsinline': 'true'
-      };
+    'playsinline': 'true'
+  };
+
+
+    videoElement = html.VideoElement()
+      ..attributes = vidAttrs;
 //    videoElement.children = [html.SourceElement()
 //    ..src = uri
 //    ..type = "video/" + _getType(uri)
@@ -335,26 +351,40 @@ class _VideoPlayer {
 
     divElement = html.DivElement();
 
-//    html.ButtonElement playBtn = html.ButtonElement()
-//      ..text = "Play";
-//    playBtn.onClick.listen((event) {
+    html.ButtonElement playBtn = html.ButtonElement()
+      ..text = "Play";
+    playBtn.onClick.listen((event) {
+      jPlay(textureId);
+    });
+    html.ButtonElement pauseBtn = html.ButtonElement()
+      ..text = "Pause";
+    pauseBtn.onClick.listen((event) {
+      jPause(textureId);
+    });
+    html.ButtonElement reloadBtn = html.ButtonElement()
+      ..text = "Reload";
+    reloadBtn.onClick.listen((event) {
+//      alert(divElement);
+      jUnload(textureId);
+//      jLoad(textureId);
 //      jPlay(textureId);
-//    });
-//    html.ButtonElement pauseBtn = html.ButtonElement()
-//      ..text = "Pause";
-//    pauseBtn.onClick.listen((event) {
-//      jPause(textureId);
-//    });
+      jInit(textureId, uri);
+    });
 
     divElement.children = [
       html.DivElement()
         ..children = [
+
+          playBtn,
+          pauseBtn ,
+          reloadBtn,
           videoElement,
-//          playBtn,
-//          pauseBtn ,
           html.ScriptElement()
             ///https://github.com/flutter/flutter/issues/40080
-            ..text = "init($textureId, '$uri');"
+            ..text = ""
+                "init($textureId, '$uri');"
+//                "Array.from(window.document.getElementsByTagName('flt-platform-view')).forEach(e => alert(e.shadowRoot.getElementById('ya_player$textureId')));"
+
         ]
     ];
 
@@ -367,8 +397,9 @@ class _VideoPlayer {
     );
   }
 
-  void initialize() {
-    buildView();
+  void initialize({Size size=Size.zero}) {
+
+    if(videoElement == null) buildView(size: size);
 
     videoElement.onCanPlay.listen((dynamic _) {
       if (!isInitialized) {
@@ -435,14 +466,13 @@ class _VideoPlayer {
       VideoEvent(
         eventType: VideoEventType.initialized,
 
-        ///TODO
 //        duration: Duration(
 //          milliseconds: (videoElement.duration * 1000).round(),
 //        ),
-//        size: Size(
-//          videoElement.videoWidth.toDouble() ?? 0.0,
-//          videoElement.videoHeight.toDouble() ?? 0.0,
-//        ),
+        size: Size(
+          videoElement.videoWidth.toDouble() ?? 0.0,
+          videoElement.videoHeight.toDouble() ?? 0.0,
+        ),
       ),
     );
   }

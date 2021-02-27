@@ -1,5 +1,6 @@
 
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
@@ -20,5 +21,5 @@ abstract class YaVideoPlayerInterface {
 
   Widget getView(int textureId) {}
 
-  Future<int> create(DataSource dataSourceDescription, Completer<void> creatingCompleter) {}
+  Future<int> create(DataSource dataSourceDescription, Completer<void> creatingCompleter, {Size size}) {}
 }
