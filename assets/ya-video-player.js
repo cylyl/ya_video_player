@@ -8,11 +8,13 @@ var videoElement
 var flvPlayer=[];
 
 function getVidElement(id){
-
+    var vid = window.document.getElementById('ya_player' + id);
+    if(vid != null ) return vid;
     var views = window.document.getElementsByTagName('flt-platform-view');
     for (var v of views) {
-        var vid = v.shadowRoot.getElementById('ya_player' + id);
+        vid = v.shadowRoot.getElementById('ya_player' + id);
         if(vid != null ) return vid;
+        else alert('vid not found! ');
     }
 }
 

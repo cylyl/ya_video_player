@@ -147,7 +147,7 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
         final scriptTag = html.LinkElement()
           ..href = css
           ..rel = "stylesheet";
-        head.children.add(scriptTag);
+        head!.children.add(scriptTag);
         loading.add(scriptTag.onLoad.first);
       }
     });
@@ -170,7 +170,7 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
 
   static bool isImported(String url) {
     final head = html.querySelector('head');
-    return _isLoaded(head, url);
+    return _isLoaded(head!, url);
   }
 
   /// Returns a [String] containing the version of the platform.
@@ -179,27 +179,26 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
     return Future.value(version);
   }
 
-  Future<void> init() {}
+  Future<void> init() async {}
 
-  Future<void> dispose(int textureId) {
+  Future<void> dispose(int textureId) async {
     _videoPlayers[textureId]?.dispose();
   }
 
-  Future<int> create(
-      DataSource dataSource, Completer<void> creatingCompleter, {Size size}) async {
+  Future<int?> create(DataSource dataSource, Completer<void> creatingCompleter, {Size? size}) {
     final int textureId = _textureCounter;
     _textureCounter++;
 
-    String uri;
+    late String uri;
     switch (dataSource.sourceType) {
       case DataSourceType.network:
         // Do NOT modify the incoming uri, it can be a Blob, and Safari doesn't
         // like blobs that have changed.
-        uri = dataSource.uri;
+        uri = dataSource.uri ?? '';
         break;
       case DataSourceType.asset:
-        String assetUrl = dataSource.asset;
-        if (dataSource.package != null && dataSource.package.isNotEmpty) {
+        String assetUrl = dataSource.asset!;
+        if (dataSource.package != null && dataSource.package!.isNotEmpty) {
           assetUrl = 'packages/${dataSource.package}/$assetUrl';
         }
         assetUrl = ui.webOnlyAssetManager.getAssetUrl(assetUrl);
@@ -217,41 +216,41 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
 
     _videoPlayers[textureId] = player;
 
-    player.initialize(size: size);
+    player.initialize(size: size!);
 
     creatingCompleter.complete(null);
 
-    return textureId;
+    return Future.value(textureId);
   }
 
-  Future<void> setLooping(List<dynamic> args) {
+  Future<void> setLooping(List<dynamic> args) async {
     int textureId = args[0];
     bool looping = args[1];
     _videoPlayers[textureId]?.setLooping(looping);
   }
 
-  Future<void> play(int textureId) {
+  Future<void> play(int textureId) async {
     _videoPlayers[textureId]?.play();
   }
 
-  Future<void> pause(int textureId) {
+  Future<void> pause(int textureId) async {
     _videoPlayers[textureId]?.pause();
   }
 
-  Future<void> setVolume(List<dynamic> args) {
+  Future<void> setVolume(List<dynamic> args) async {
     int textureId = args[0];
     double volume = args[1];
 
     _videoPlayers[textureId]?.setVolume(volume);
   }
 
-  Future<void> seekTo(List<dynamic> args) {
+  Future<void> seekTo(List<dynamic> args) async {
     int textureId = args[0];
     Duration position = args[1];
     _videoPlayers[textureId]?.seekTo(position);
   }
 
-  Future<void> setPlaybackSpeed(List<dynamic> args) {
+  Future<void> setPlaybackSpeed(List<dynamic> args) async {
     int textureId = args[0];
     double speed = args[1];
     _videoPlayers[textureId]?.setPlaybackSpeed(speed);
@@ -261,11 +260,11 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
     return Future.value(_videoPlayers[textureId]?.getPosition());
   }
 
-  Future<void> setMixWithOthers(bool mixWithOthers) {}
+  Future<void> setMixWithOthers(bool mixWithOthers) async {}
 
   @override
   Stream<VideoEvent> videoEventsFor(int textureId) {
-    return _videoPlayers[textureId]?.eventController.stream;
+    return _videoPlayers[textureId]!.eventController.stream;
   }
 
   static String _getViewType(int textureId) =>
@@ -275,25 +274,28 @@ class YaVideoPlayerWeb extends YaVideoPlayerInterface {
     return _videoPlayers[textureId]?.playerView ?? Container();
   }
 
-  void Function(int id) sendInitialized(textureId) {
+  void sendInitialized(textureId) {
     _videoPlayers[textureId]?.sendInitialized();
   }
 }
 
 class _VideoPlayer {
-  _VideoPlayer({this.uri, this.textureId});
+  _VideoPlayer({required this.uri, required this.textureId});
 
   final StreamController<VideoEvent> eventController =
       StreamController<VideoEvent>();
 
   final String uri;
   final int textureId;
-  HtmlElementView playerView;
-  html.VideoElement videoElement;
-  html.DivElement divElement;
+  HtmlElementView playerView = HtmlElementView(viewType: '',);
+  html.VideoElement videoElement = html.VideoElement();
+  html.DivElement divElement = html.DivElement();
   bool isInitialized = false;
 
-  void buildView({Size size=Size.zero}) {
+  void buildView({required Size size}) {
+
+
+    print('buildView');
     /**
      *
         <div>
@@ -349,7 +351,6 @@ class _VideoPlayer {
     // Allows Safari iOS to play the video inline
 //    videoElement.setAttribute('playsinline', 'true');
 
-    divElement = html.DivElement();
 
     html.ButtonElement playBtn = html.ButtonElement()
       ..text = "Play";
@@ -397,9 +398,10 @@ class _VideoPlayer {
     );
   }
 
-  void initialize({Size size=Size.zero}) {
+  void initialize({required Size size}) {
 
-    if(videoElement == null) buildView(size: size);
+    print('initialize...');
+    buildView(size: size);
 
     videoElement.onCanPlay.listen((dynamic _) {
       if (!isInitialized) {
@@ -413,9 +415,9 @@ class _VideoPlayer {
       // The Event itself (_) doesn't contain info about the actual error.
       // We need to look at the HTMLMediaElement.error.
       // See: https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/error
-      html.MediaError error = videoElement.error;
+      html.MediaError error = videoElement.error!;
       eventController.addError(PlatformException(
-        code: _kErrorValueToErrorName[error.code],
+        code: _kErrorValueToErrorName[error.code]!,
         message: error.message != '' ? error.message : _kDefaultErrorMessage,
         details: _kErrorValueToErrorDescription[error.code],
       ));
@@ -433,7 +435,7 @@ class _VideoPlayer {
     ));
   }
 
-  Future<void> play() {
+  Future<void> play() async {
     jPlay(textureId);
   }
 
@@ -470,8 +472,8 @@ class _VideoPlayer {
 //          milliseconds: (videoElement.duration * 1000).round(),
 //        ),
         size: Size(
-          videoElement.videoWidth.toDouble() ?? 0.0,
-          videoElement.videoHeight.toDouble() ?? 0.0,
+          videoElement.videoWidth.toDouble(),
+          videoElement.videoHeight.toDouble(),
         ),
       ),
     );

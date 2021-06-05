@@ -13,7 +13,7 @@ class platformViewRegistry {
   /// Shim for registerViewFactory
   /// https://github.com/flutter/engine/blob/master/lib/web_ui/lib/ui.dart#L72
   static registerViewFactory(
-      String viewTypeId, html.Element Function(int viewId) viewFactory) {}
+      String viewTypeId, html.Element? Function(int viewId) viewFactory) {}
 }
 
 /// Shim for web_ui engine.AssetManager.
@@ -21,7 +21,7 @@ class platformViewRegistry {
 class webOnlyAssetManager {
   /// Shim for getAssetUrl.
   /// https://github.com/flutter/engine/blob/master/lib/web_ui/lib/src/engine/assets.dart#L45
-  static getAssetUrl(String asset) {}
+  static getAssetUrl(String? asset) {}
 }
 
 /// Signature of callbacks that have no arguments and return no data.

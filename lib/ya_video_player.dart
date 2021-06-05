@@ -26,9 +26,9 @@ class YaVideoPlayer extends StatefulWidget {
 }
 
 class _VideoPlayerState extends State<YaVideoPlayer> {
-  VideoPlayer _extPlayer;
+  late VideoPlayer _extPlayer;
 
-  _VideoPlayerState() {}
+  _VideoPlayerState();
 
   @override
   void initState() {
@@ -38,43 +38,46 @@ class _VideoPlayerState extends State<YaVideoPlayer> {
   @override
   Widget build(BuildContext context) {
     if (kIsWeb) {
-      return widget?.controller.getView() ;
+      return widget.controller.getView() ;
     } else {
-      _extPlayer = VideoPlayer(widget?.controller);
+      _extPlayer = VideoPlayer(widget.controller);
       return _extPlayer;
     }
   }
 }
 
 class YaVideoPlayerController extends VideoPlayerController {
-  YaVideoPlayerInterface _interface = YaVideoPlayerInterface.instance;
+  YaVideoPlayerInterface _interface = YaVideoPlayerInterface.instance!;
 
-  Future<void> _initializeVideoPlayerFuture;
-  Completer<void> _creatingCompleter;
-  StreamSubscription<dynamic> _eventSubscription;
+  late Future<void> _initializeVideoPlayerFuture;
+  late Completer<void> _creatingCompleter;
+  late StreamSubscription<dynamic> _eventSubscription;
 
-  int _textureId;
-  Timer _timer;
+  @visibleForTesting
+//  static const int kUninitializedTextureId = -1;
+//  int _textureId = kUninitializedTextureId;
+  int _textureId = -1;
+  Timer? _timer;
   bool _isDisposed = false;
-  bool _isFlv = false;
+  bool isFlv = false;
 
-  YaVideoPlayerController.asset(String dataSource) :
-        _isFlv = kIsWeb && dataSource.endsWith("flv"),
+  YaVideoPlayerController.asset(String dataSource, {bool isFlv = false}) :
+        isFlv = isFlv || (kIsWeb && dataSource.endsWith("flv")),
         super.asset(dataSource);
 
-  YaVideoPlayerController.network(String dataSource)
+  YaVideoPlayerController.network(String dataSource, {bool isFlv = false})
       :
-        _isFlv = kIsWeb && dataSource.endsWith("flv"),
+        isFlv = isFlv || (kIsWeb && dataSource.endsWith("flv")),
         super.network(dataSource);
 
-  YaVideoPlayerController.file(File file) :
-        _isFlv = kIsWeb && file.toString().endsWith("flv"),
+  YaVideoPlayerController.file(File file, {bool isFlv = false}) :
+        isFlv = isFlv || (kIsWeb && file.toString().endsWith("flv")),
         super.file(file);
 
   @override
   Future<void> setPlaybackSpeed(double speed) async {
-    if (_isFlv) {
-      return await YaVideoPlayer._channel
+    if (isFlv) {
+      await YaVideoPlayer._channel
           .invokeMapMethod('setPlaybackSpeed', [_textureId, speed]);
     } else {
       return await super.setPlaybackSpeed(speed);
@@ -83,8 +86,8 @@ class YaVideoPlayerController extends VideoPlayerController {
 
   @override
   Future<void> setVolume(double volume) async {
-    if (_isFlv) {
-      return await YaVideoPlayer._channel
+    if (isFlv) {
+      await YaVideoPlayer._channel
           .invokeMapMethod('setVolume', [_textureId, volume]);
     } else {
       return await super.setVolume(volume);
@@ -92,9 +95,9 @@ class YaVideoPlayerController extends VideoPlayerController {
   }
 
   @override
-  Future<void> seekTo(Duration position) async {
-    if (_isFlv) {
-      return await YaVideoPlayer._channel
+  Future<void> seekTo(Duration? position) async {
+    if (isFlv) {
+      await YaVideoPlayer._channel
           .invokeMapMethod('seekTo', [_textureId, position]);
     } else {
       return await super.seekTo(position);
@@ -102,8 +105,8 @@ class YaVideoPlayerController extends VideoPlayerController {
   }
 
   @override
-  Future<Duration> get position async {
-    if (_isFlv) {
+  Future<Duration?> get position async {
+    if (isFlv) {
       return await YaVideoPlayer._channel
           .invokeMethod('getPosition', _textureId);
     } else {
@@ -113,7 +116,7 @@ class YaVideoPlayerController extends VideoPlayerController {
 
   @override
   Future<void> pause() async {
-    if (_isFlv) {
+    if (isFlv) {
       return await YaVideoPlayer._channel.invokeMethod('pause', _textureId);
     } else {
       return await super.pause();
@@ -122,8 +125,8 @@ class YaVideoPlayerController extends VideoPlayerController {
 
   @override
   Future<void> setLooping(bool looping) async {
-    if (_isFlv) {
-      return await YaVideoPlayer._channel
+    if (isFlv) {
+      await YaVideoPlayer._channel
           .invokeMapMethod('setLooping', [_textureId, looping]);
     } else {
       return await super.setLooping(looping);
@@ -132,7 +135,7 @@ class YaVideoPlayerController extends VideoPlayerController {
 
   @override
   Future<void> play() async {
-    if (_isFlv) {
+    if (isFlv) {
       return await YaVideoPlayer._channel.invokeMethod('play', _textureId);
     } else {
       return await super.play();
@@ -141,7 +144,7 @@ class YaVideoPlayerController extends VideoPlayerController {
 
   @override
   Future<void> dispose() async {
-    if (_isFlv) {
+    if (isFlv) {
       return await YaVideoPlayer._channel.invokeMethod('dispose', _textureId);
     } else {
       return await super.dispose();
@@ -149,8 +152,12 @@ class YaVideoPlayerController extends VideoPlayerController {
   }
 
   @override
-  Future<void> initialize({Size size=Size.zero}) async {
-    if (_isFlv) {
+  Future<void> initialize({Size? size}) async {
+    if(size == null ){
+      size=Size.square(480.0);
+      print("Default size " + size.width.toString());
+    }
+    if (isFlv) {
       _creatingCompleter = Completer<void>();
 
       DataSource dataSourceDescription;
@@ -179,7 +186,7 @@ class YaVideoPlayerController extends VideoPlayerController {
 
       if (videoPlayerOptions?.mixWithOthers != null) {
         await YaVideoPlayer._channel
-            .invokeMethod('setMixWithOthers', videoPlayerOptions.mixWithOthers);
+            .invokeMethod('setMixWithOthers', videoPlayerOptions?.mixWithOthers);
       }
 
       _textureId = (await _interface.create(dataSourceDescription, _creatingCompleter, size: size)) ?? -1;
@@ -249,14 +256,14 @@ class YaVideoPlayerController extends VideoPlayerController {
 
   @override
   int get textureId {
-    if (_isFlv) {
+    if (isFlv) {
       return _textureId;
     } else {
-      return super.textureId;
+      return super.textureId!;
     }
   }
 
   Widget getView() {
-    return _interface?.getView(_textureId);
+    return _interface.getView(_textureId);
   }
 }
