@@ -120,7 +120,7 @@ packages:
     dependency: transitive
     description:
       path: "."
-      ref: "7e5aa1a5034843d0a715b9ab003ccfbd8e1fb121"
+      ref: HEAD
       resolved-ref: "7e5aa1a5034843d0a715b9ab003ccfbd8e1fb121"
       url: "https://github.com/cylyl/flutter_web_import_js_library.git"
     source: git

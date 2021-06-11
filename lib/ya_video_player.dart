@@ -47,7 +47,7 @@ class _VideoPlayerState extends State<YaVideoPlayer> {
 }
 
 class YaVideoPlayerController extends VideoPlayerController {
-  YaVideoPlayerInterface _interface = YaVideoPlayerInterface.instance!;
+  YaVideoPlayerInterface? _interface = YaVideoPlayerInterface.instance;
 
   late Future<void> _initializeVideoPlayerFuture;
   late Completer<void> _creatingCompleter;
@@ -189,7 +189,7 @@ class YaVideoPlayerController extends VideoPlayerController {
             .invokeMethod('setMixWithOthers', videoPlayerOptions?.mixWithOthers);
       }
 
-      _textureId = (await _interface.create(dataSourceDescription, _creatingCompleter, size: size)) ?? -1;
+      _textureId = (await _interface!.create(dataSourceDescription, _creatingCompleter, size: size)) ?? -1;
       _creatingCompleter.complete(null);
 
       final Completer<void> initializingCompleter = Completer<void>();
@@ -245,7 +245,7 @@ class YaVideoPlayerController extends VideoPlayerController {
         }
       }
 
-      _eventSubscription = _interface
+      _eventSubscription = _interface!
           .videoEventsFor(_textureId)
           .listen(eventListener, onError: errorListener);
       return initializingCompleter.future;
@@ -264,6 +264,6 @@ class YaVideoPlayerController extends VideoPlayerController {
   }
 
   Widget getView() {
-    return _interface.getView(_textureId);
+    return _interface!.getView(_textureId);
   }
 }
