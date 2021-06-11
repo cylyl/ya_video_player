@@ -21,7 +21,6 @@ dependencies:
   import_js_library:
     git:
       url: https://github.com/cylyl/flutter_web_import_js_library.git
-      ref: 7e5aa1a5034843d0a715b9ab003ccfbd8e1fb121
   video_player_platform_interface: ^4.1.0
 
 dev_dependencies:
