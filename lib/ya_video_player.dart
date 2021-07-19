@@ -51,7 +51,6 @@ class _VideoPlayerState extends State<YaVideoPlayer> {
   }
 }
 
-
 /// The duration, current position, buffering state, error state and settings
 /// of a [YaVideoPlayerController].
 class YaVideoPlayerValue {
@@ -79,9 +78,9 @@ class YaVideoPlayerValue {
   /// Returns an instance with the given [errorDescription].
   YaVideoPlayerValue.erroneous(String errorDescription)
       : this(
-      duration: Duration.zero,
-      isInitialized: false,
-      errorDescription: errorDescription);
+            duration: Duration.zero,
+            isInitialized: false,
+            errorDescription: errorDescription);
 
   /// The total duration of the video.
   ///
@@ -216,9 +215,9 @@ class YaVideoPlayerController {
   bool isFlv = false;
 
   YaVideoPlayerController.asset(String dataSource,
-      {bool isFlv = false, bool extPlayer = false})
-      : isFlv = isFlv || (kIsWeb && dataSource.endsWith("flv")) {
-    isFlv
+      {bool isFlv = false, bool extPlayer = false}) {
+    this.isFlv = isFlv || (kIsWeb && dataSource.endsWith("flv"));
+    this.isFlv
         ? _flvPlayer = VideoPlayerController.asset(dataSource)
         : extPlayer
             ? _extPlayer = VideoPlayerController.asset(dataSource)
@@ -226,42 +225,40 @@ class YaVideoPlayerController {
   }
 
   YaVideoPlayerController.network(String dataSource,
-      {bool isFlv = false, bool extPlayer = false})
-      : isFlv = isFlv || (kIsWeb && dataSource.endsWith("flv")) {
-    isFlv
+      {bool isFlv = false, bool extPlayer = false}) {
+    this.isFlv = isFlv || (kIsWeb && dataSource.endsWith("flv"));
+    this.isFlv
         ? _flvPlayer = VideoPlayerController.network(dataSource)
         : extPlayer
-        ? _extPlayer = VideoPlayerController.network(dataSource)
-        : _fijkPlayer.setDataSource(dataSource, autoPlay: true);
+            ? _extPlayer = VideoPlayerController.network(dataSource)
+            : _fijkPlayer.setDataSource(dataSource, autoPlay: true);
   }
 
   YaVideoPlayerController.file(File file,
-      {bool isFlv = false, bool extPlayer = false})
-      : isFlv = isFlv || (kIsWeb && file.toString().endsWith("flv")) {
-    isFlv
+      {bool isFlv = false, bool extPlayer = false}) {
+    this.isFlv = isFlv || (kIsWeb && file.toString().endsWith("flv"));
+    this.isFlv
         ? _flvPlayer = VideoPlayerController.file(file)
         : extPlayer
-        ? _extPlayer = VideoPlayerController.file(file)
-        : _fijkPlayer.setDataSource(file.path, autoPlay: true);
+            ? _extPlayer = VideoPlayerController.file(file)
+            : _fijkPlayer.setDataSource(file.path, autoPlay: true);
   }
 
-  YaVideoPlayerValue value( {Size defaultSize = const Size.square(450)}) {
+  YaVideoPlayerValue value({Size defaultSize = const Size.square(450)}) {
     return isFlv
         ? copyVideoPlayerValue(_flvPlayer!.value, defaultSize: defaultSize)
         : (_extPlayer != null)
-        ? copyVideoPlayerValue(_extPlayer!.value, defaultSize: defaultSize)
-        : copyVideoPlayerValue(_fijkPlayer.value, defaultSize: defaultSize);
+            ? copyVideoPlayerValue(_extPlayer!.value, defaultSize: defaultSize)
+            : copyVideoPlayerValue(_fijkPlayer.value, defaultSize: defaultSize);
   }
 
   YaVideoPlayerValue copyVideoPlayerValue(value,
       {Size defaultSize = const Size.square(450)}) {
-
     if (value is VideoPlayerValue) {
       return YaVideoPlayerValue(
           duration: value.duration!,
-          size: value.size?? defaultSize,
-          errorDescription: value.errorDescription
-      );
+          size: value.size ?? defaultSize,
+          errorDescription: value.errorDescription);
     } else if (value is FijkValue) {
       return YaVideoPlayerValue(
         duration: value.duration,
@@ -277,8 +274,8 @@ class YaVideoPlayerController {
     return isFlv
         ? _flvPlayer!.addListener(listener)
         : (_extPlayer != null)
-        ? _extPlayer!.addListener(listener)
-        : _fijkPlayer.addListener(listener);
+            ? _extPlayer!.addListener(listener)
+            : _fijkPlayer.addListener(listener);
   }
 
   @override
@@ -439,7 +436,7 @@ class YaVideoPlayerController {
         if (_isDisposed) {
           return;
         }
-        if(_flvPlayer != null) {
+        if (_flvPlayer != null) {
           switch (event.eventType) {
             case VideoEventType.initialized:
               _flvPlayer!.value = _flvPlayer!.value.copyWith(
@@ -454,19 +451,20 @@ class YaVideoPlayerController {
 //            _applyPlayPause();
               break;
             case VideoEventType.completed:
-              _flvPlayer!.value =
-                  _flvPlayer!.value.copyWith(isPlaying: false,
-                      position: _flvPlayer!.value.duration);
+              _flvPlayer!.value = _flvPlayer!.value.copyWith(
+                  isPlaying: false, position: _flvPlayer!.value.duration);
               _timer?.cancel();
               break;
             case VideoEventType.bufferingUpdate:
-              _flvPlayer!.value = _flvPlayer!.value.copyWith(buffered: event.buffered);
+              _flvPlayer!.value =
+                  _flvPlayer!.value.copyWith(buffered: event.buffered);
               break;
             case VideoEventType.bufferingStart:
               _flvPlayer!.value = _flvPlayer!.value.copyWith(isBuffering: true);
               break;
             case VideoEventType.bufferingEnd:
-              _flvPlayer!.value = _flvPlayer!.value.copyWith(isBuffering: false);
+              _flvPlayer!.value =
+                  _flvPlayer!.value.copyWith(isBuffering: false);
               break;
             case VideoEventType.unknown:
               break;
@@ -512,5 +510,3 @@ class YaVideoPlayerController {
     return _interface!.getView(_textureId);
   }
 }
-
-
