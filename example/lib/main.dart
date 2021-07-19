@@ -28,11 +28,12 @@ class _MyAppState extends State<MyApp> {
 //    <!--var flvUrl = "https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8";-->
 //    <!--var urlType = 'application/x-mpegURL';-->
     _controllers.add(YaVideoPlayerController.network(
-//      'http://r.ossrs.net/live/livestream.flv'
-      'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
+     'http://r.ossrs.net/live/livestream.flv'
+      // 'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
 //      'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
 //      closedCaptionFile: _loadCaptions(),
 //      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+
     ));
 
     int i = 0;
@@ -93,8 +94,8 @@ class _MyAppState extends State<MyApp> {
                        fit: BoxFit.scaleDown,
                        child:
                    SizedBox(
-                   width: e.value.size?.width ?? 500 ,
-                   height: e.value.size?.height ?? 400,
+                   width: /*e.value.size?.width ?? */500 ,
+                   height: /*e.value.size?.height ??*/ 400,
                    child:  YaVideoPlayer(e),
                    ));
                },
