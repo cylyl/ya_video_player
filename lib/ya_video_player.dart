@@ -208,12 +208,11 @@ class YaVideoPlayerController {
   int _textureId = -1;
   Timer? _timer;
   bool _isDisposed = false;
-  bool isFlv = false;
   Player? player;
 
   YaVideoPlayerController.asset(String dataSource, {Player? player}) {
     this.player = player;
-    this.isFlv = (kIsWeb || dataSource.contains(".flv"));
+    bool isFlv = (kIsWeb || dataSource.contains(".flv"));
     bool isHls = (dataSource.contains(".m3u8"));
 
     if (isFlv) {
@@ -239,7 +238,7 @@ class YaVideoPlayerController {
 
   YaVideoPlayerController.network(String dataSource, {Player? player}) {
     this.player = player;
-    this.isFlv = (kIsWeb || dataSource.contains(".flv"));
+    bool isFlv = (kIsWeb || dataSource.contains(".flv"));
     bool isHls = (dataSource.contains(".m3u8"));
 
     if (isFlv) {
@@ -300,12 +299,24 @@ class YaVideoPlayerController {
   }
 
   YaVideoPlayerValue value({Size defaultSize = const Size.square(450)}) {
-    return isFlv
-        ? copyVideoPlayerValue(_flvPlayer!.value, defaultSize: defaultSize)
-        : (_extPlayer != null)
-            ? copyVideoPlayerValue(_extPlayer!.value, defaultSize: defaultSize)
-            : copyVideoPlayerValue(_fijkPlayer!.value,
-                defaultSize: defaultSize);
+    switch (this.player) {
+      case Player.ijk:
+        {
+          return copyVideoPlayerValue(_fijkPlayer!.value,
+              defaultSize: defaultSize);
+        }
+      case Player.ext:
+        {
+          return copyVideoPlayerValue(_extPlayer!.value,
+              defaultSize: defaultSize);
+        }
+      case Player.flv:
+      default:
+        {
+          return copyVideoPlayerValue(_flvPlayer!.value,
+              defaultSize: defaultSize);
+        }
+    }
   }
 
   YaVideoPlayerValue copyVideoPlayerValue(value,
@@ -507,7 +518,7 @@ class YaVideoPlayerController {
       size = Size.square(480.0);
       print("Default size " + size.width.toString());
     }
-    if (isFlv) {
+    if (_flvPlayer != null) {
       _creatingCompleter = Completer<void>();
 
       late DataSource dataSourceDescription;
@@ -613,7 +624,7 @@ class YaVideoPlayerController {
 
   @override
   int get textureId {
-    if (isFlv) {
+    if (_flvPlayer != null) {
       return _textureId;
     } else {
       return _flvPlayer?.textureId ?? 0;
