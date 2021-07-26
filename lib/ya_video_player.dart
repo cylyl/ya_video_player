@@ -237,8 +237,7 @@ class YaVideoPlayerController {
   }
 
   YaVideoPlayerController.network(String dataSource, {Player? player}) {
-    this.player = player;
-    bool isFlv = (kIsWeb || dataSource.contains(".flv"));
+    bool isFlv = (dataSource.contains(".flv"));
     bool isHls = (dataSource.contains(".m3u8"));
 
     if (isFlv) {
@@ -246,6 +245,7 @@ class YaVideoPlayerController {
     } else if (isHls) {
       this.player = Player.yoyo;
     }
+    this.player = player;
     switch (this.player) {
       case Player.ijk:
         {
