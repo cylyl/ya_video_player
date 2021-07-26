@@ -13,7 +13,6 @@ dependencies:
   flutter_web_plugins:
     sdk: flutter
   ext_video_player:
-#    path: ../ext_video_player
     git:
       url: https://github.com/cylyl/ext_video_player.git
       ref: ddc4f8bc51a8ae2d1d8022d14783ad7ba4f25017
@@ -23,6 +22,11 @@ dependencies:
       url: https://github.com/cylyl/flutter_web_import_js_library.git
   video_player_platform_interface: ^4.1.0
   fijkplayer: ^0.10.0
+
+  yoyo_player:
+    git:
+      url: https://github.com/ko-htut/yoyo-player
+      ref: 70eb77fb9f7402a81cfa86e0598ba79bdd755cad
 
 dev_dependencies:
   flutter_test:

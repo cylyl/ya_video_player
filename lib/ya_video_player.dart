@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart'
     show DataSource, VideoEvent, VideoEventType;
 import 'package:ya_video_player/ya_video_player_interface.dart';
+import 'package:yoyo_player/yoyo_player.dart';
 
 class YaVideoPlayer extends StatefulWidget {
   static const MethodChannel _channel = const MethodChannel('ya_video_player');
@@ -27,9 +28,6 @@ class YaVideoPlayer extends StatefulWidget {
 }
 
 class _VideoPlayerState extends State<YaVideoPlayer> {
-  // late VideoPlayer _extPlayer;
-  late FijkView _extPlayer;
-
   _VideoPlayerState();
 
   @override
@@ -39,16 +37,15 @@ class _VideoPlayerState extends State<YaVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
-      return widget.controller.getView();
-    } else {
-      // _extPlayer = VideoPlayer(widget.controller);
-      _extPlayer = FijkView(
-        player: widget.controller._fijkPlayer,
-      );
-      return _extPlayer;
-    }
+    return widget.controller.getView();
   }
+}
+
+enum Player {
+  flv,
+  ext,
+  ijk,
+  yoyo,
 }
 
 /// The duration, current position, buffering state, error state and settings
@@ -200,48 +197,106 @@ class YaVideoPlayerController {
   YaVideoPlayerInterface? _interface = YaVideoPlayerInterface.instance;
   VideoPlayerController? _extPlayer;
   VideoPlayerController? _flvPlayer;
-  final FijkPlayer _fijkPlayer = FijkPlayer();
+  FijkPlayer? _fijkPlayer;
+  YoYoPlayer? _yoYoPlayer;
 
   late Future<void> _initializeVideoPlayerFuture;
   late Completer<void> _creatingCompleter;
   late StreamSubscription<dynamic> _eventSubscription;
 
   @visibleForTesting
-//  static const int kUninitializedTextureId = -1;
-//  int _textureId = kUninitializedTextureId;
   int _textureId = -1;
   Timer? _timer;
   bool _isDisposed = false;
   bool isFlv = false;
+  Player? player;
 
-  YaVideoPlayerController.asset(String dataSource,
-      {bool isFlv = false, bool extPlayer = false}) {
-    this.isFlv = isFlv || (kIsWeb && dataSource.endsWith("flv"));
-    this.isFlv
-        ? _flvPlayer = VideoPlayerController.asset(dataSource)
-        : extPlayer
-            ? _extPlayer = VideoPlayerController.asset(dataSource)
-            : _fijkPlayer.setDataSource(dataSource, autoPlay: true);
+  YaVideoPlayerController.asset(String dataSource, {Player? player}) {
+    this.player = player;
+    this.isFlv = (kIsWeb || dataSource.contains(".flv"));
+    bool isHls = (dataSource.contains(".m3u8"));
+
+    if (isFlv) {
+      this.player = Player.ijk;
+    } else if (isHls) {
+      this.player = Player.yoyo;
+    }
+    switch (this.player) {
+      case Player.ijk:
+        {
+          _fijkPlayer = FijkPlayer();
+          _fijkPlayer!.setDataSource(dataSource, autoPlay: true);
+          break;
+        }
+      case Player.ext:
+      case Player.flv:
+      default:
+        {
+          _flvPlayer = VideoPlayerController.asset(dataSource);
+        }
+    }
   }
 
-  YaVideoPlayerController.network(String dataSource,
-      {bool isFlv = false, bool extPlayer = false}) {
-    this.isFlv = isFlv || (kIsWeb && dataSource.endsWith("flv"));
-    this.isFlv
-        ? _flvPlayer = VideoPlayerController.network(dataSource)
-        : extPlayer
-            ? _extPlayer = VideoPlayerController.network(dataSource)
-            : _fijkPlayer.setDataSource(dataSource, autoPlay: true);
+  YaVideoPlayerController.network(String dataSource, {Player? player}) {
+    this.player = player;
+    this.isFlv = (kIsWeb || dataSource.contains(".flv"));
+    bool isHls = (dataSource.contains(".m3u8"));
+
+    if (isFlv) {
+      this.player = kIsWeb ? Player.flv : Player.ijk;
+    } else if (isHls) {
+      this.player = Player.yoyo;
+    }
+    switch (this.player) {
+      case Player.ijk:
+        {
+          _fijkPlayer = FijkPlayer();
+          _fijkPlayer!.setDataSource(dataSource, autoPlay: true);
+          break;
+        }
+      case Player.yoyo:
+        {
+          _yoYoPlayer = YoYoPlayer(
+            aspectRatio: 1,
+            url: dataSource,
+            videoStyle: VideoStyle(),
+            videoLoadingStyle: VideoLoadingStyle(
+              loading: Center(
+                child: Text("LOADING..."),
+              ),
+            ),
+          );
+          break;
+        }
+      case Player.ext:
+        {
+          _extPlayer = VideoPlayerController.network(dataSource);
+          break;
+        }
+      case Player.flv:
+      default:
+        {
+          _flvPlayer = VideoPlayerController.network(dataSource);
+        }
+    }
   }
 
-  YaVideoPlayerController.file(File file,
-      {bool isFlv = false, bool extPlayer = false}) {
-    this.isFlv = isFlv || (kIsWeb && file.toString().endsWith("flv"));
-    this.isFlv
-        ? _flvPlayer = VideoPlayerController.file(file)
-        : extPlayer
-            ? _extPlayer = VideoPlayerController.file(file)
-            : _fijkPlayer.setDataSource(file.path, autoPlay: true);
+  YaVideoPlayerController.file(File file, {Player? player}) {
+    this.player = player;
+    switch (this.player) {
+      case Player.ijk:
+        {
+          _fijkPlayer = FijkPlayer();
+          _fijkPlayer!.setDataSource(file.path, autoPlay: true);
+          break;
+        }
+      case Player.ext:
+      case Player.flv:
+      default:
+        {
+          _flvPlayer = VideoPlayerController.file(file);
+        }
+    }
   }
 
   YaVideoPlayerValue value({Size defaultSize = const Size.square(450)}) {
@@ -249,14 +304,15 @@ class YaVideoPlayerController {
         ? copyVideoPlayerValue(_flvPlayer!.value, defaultSize: defaultSize)
         : (_extPlayer != null)
             ? copyVideoPlayerValue(_extPlayer!.value, defaultSize: defaultSize)
-            : copyVideoPlayerValue(_fijkPlayer.value, defaultSize: defaultSize);
+            : copyVideoPlayerValue(_fijkPlayer!.value,
+                defaultSize: defaultSize);
   }
 
   YaVideoPlayerValue copyVideoPlayerValue(value,
       {Size defaultSize = const Size.square(450)}) {
     if (value is VideoPlayerValue) {
       return YaVideoPlayerValue(
-          duration: value.duration!,
+          duration: value.duration ?? Duration(),
           size: value.size ?? defaultSize,
           errorDescription: value.errorDescription);
     } else if (value is FijkValue) {
@@ -271,119 +327,177 @@ class YaVideoPlayerController {
   }
 
   void addListener(listener) {
-    return isFlv
-        ? _flvPlayer!.addListener(listener)
-        : (_extPlayer != null)
-            ? _extPlayer!.addListener(listener)
-            : _fijkPlayer.addListener(listener);
+    switch (player) {
+      case Player.flv:
+        {
+          _flvPlayer!.addListener(listener);
+          break;
+        }
+      case Player.ext:
+        {
+          _extPlayer!.addListener(listener);
+          break;
+        }
+      case Player.ijk:
+        {
+          _fijkPlayer!.addListener(listener);
+          break;
+        }
+    }
   }
 
   @override
   Future<void> setPlaybackSpeed(double speed) async {
-    if (isFlv) {
-      await YaVideoPlayer._channel
-          .invokeMapMethod('setPlaybackSpeed', [_textureId, speed]);
-    } else {
-      if (_extPlayer != null) {
-        return await _extPlayer!.setPlaybackSpeed(speed);
-      } else {
-        return await _fijkPlayer.setSpeed(speed);
-      }
+    switch (player) {
+      case Player.flv:
+        {
+          await YaVideoPlayer._channel
+              .invokeMapMethod('setPlaybackSpeed', [_textureId, speed]);
+          break;
+        }
+      case Player.ext:
+        {
+          return await _extPlayer!.setPlaybackSpeed(speed);
+        }
+      case Player.ijk:
+        {
+          return await _fijkPlayer!.setSpeed(speed);
+        }
     }
   }
 
   @override
   Future<void> setVolume(double volume) async {
-    if (isFlv) {
-      await YaVideoPlayer._channel
-          .invokeMapMethod('setVolume', [_textureId, volume]);
-    } else {
-      if (_extPlayer != null) {
-        return await _extPlayer!.setVolume(volume);
-      } else {
-        return await _fijkPlayer.setVolume(volume);
-      }
+    switch (player) {
+      case Player.flv:
+        {
+          await YaVideoPlayer._channel
+              .invokeMapMethod('setVolume', [_textureId, volume]);
+          break;
+        }
+      case Player.ext:
+        {
+          return await _extPlayer!.setVolume(volume);
+        }
+      case Player.ijk:
+        {
+          return await _fijkPlayer!.setVolume(volume);
+        }
     }
   }
 
   @override
   Future<void> seekTo(Duration? position) async {
-    if (isFlv) {
-      await YaVideoPlayer._channel
-          .invokeMapMethod('seekTo', [_textureId, position]);
-    } else {
-      if (_extPlayer != null) {
-        return await _extPlayer!.seekTo(position);
-      } else {
-        return await _fijkPlayer.seekTo(position?.inMicroseconds ?? 0);
-      }
+    switch (player) {
+      case Player.flv:
+        {
+          await YaVideoPlayer._channel
+              .invokeMapMethod('seekTo', [_textureId, position]);
+          break;
+        }
+      case Player.ext:
+        {
+          return await _extPlayer!.seekTo(position);
+        }
+      case Player.ijk:
+        {
+          return await _fijkPlayer!.seekTo(position?.inMicroseconds ?? 0);
+        }
     }
   }
 
   @override
   Future<Duration?> get position async {
-    if (isFlv) {
-      return await YaVideoPlayer._channel
-          .invokeMethod('getPosition', _textureId);
-    } else {
-      if (_extPlayer != null) {
-        return await _extPlayer!.position;
-      } else {
-        return await _fijkPlayer.currentPos;
-      }
+    switch (player) {
+      case Player.flv:
+        {
+          return await YaVideoPlayer._channel
+              .invokeMethod('getPosition', _textureId);
+        }
+      case Player.ext:
+        {
+          return await _extPlayer!.position;
+        }
+      case Player.ijk:
+        {
+          return await _fijkPlayer!.currentPos;
+        }
     }
   }
 
   @override
   Future<void> pause() async {
-    if (isFlv) {
-      return await YaVideoPlayer._channel.invokeMethod('pause', _textureId);
-    } else {
-      if (_extPlayer != null) {
-        return await _extPlayer!.pause();
-      } else {
-        return await _fijkPlayer.pause();
-      }
+    switch (player) {
+      case Player.flv:
+        {
+          return await YaVideoPlayer._channel.invokeMethod('pause', _textureId);
+        }
+      case Player.ext:
+        {
+          return await _extPlayer!.pause();
+        }
+      case Player.ijk:
+        {
+          return await _fijkPlayer!.pause();
+        }
     }
   }
 
   @override
   Future<void> setLooping(bool looping) async {
-    if (isFlv) {
-      await YaVideoPlayer._channel
-          .invokeMapMethod('setLooping', [_textureId, looping]);
-    } else {
-      if (_extPlayer != null) {
-        return await _extPlayer!.setLooping(looping);
-      } else {
-        return await _fijkPlayer.setLoop(100);
-      }
+    switch (player) {
+      case Player.flv:
+        {
+          await YaVideoPlayer._channel
+              .invokeMapMethod('setLooping', [_textureId, looping]);
+          break;
+        }
+      case Player.ext:
+        {
+          return await _extPlayer!.setLooping(looping);
+        }
+      case Player.ijk:
+        {
+          return await _fijkPlayer!.setLoop(100);
+        }
     }
   }
 
   @override
   Future<void> play() async {
-    if (isFlv) {
-      return await YaVideoPlayer._channel.invokeMethod('play', _textureId);
-    } else {
-      if (_extPlayer != null) {
-        return await _extPlayer!.play();
-      } else {
-        return await _fijkPlayer.start();
-      }
+    switch (player) {
+      case Player.flv:
+        {
+          return await YaVideoPlayer._channel.invokeMethod('play', _textureId);
+        }
+      case Player.ext:
+        {
+          return await _extPlayer!.play();
+        }
+      case Player.ijk:
+        {
+          return await _fijkPlayer!.start();
+        }
     }
   }
 
   @override
   Future<void> dispose() async {
-    if (isFlv) {
-      return await YaVideoPlayer._channel.invokeMethod('dispose', _textureId);
-    } else {
-      if (_extPlayer != null) {
-        return await _extPlayer!.dispose();
-      } else {
-        return _fijkPlayer.dispose();
-      }
+    switch (player) {
+      case Player.flv:
+        {
+          return await YaVideoPlayer._channel
+              .invokeMethod('dispose', _textureId);
+          break;
+        }
+      case Player.ext:
+        {
+          return await _extPlayer!.dispose();
+        }
+      case Player.ijk:
+        {
+          return _fijkPlayer!.dispose();
+        }
     }
   }
 
@@ -507,6 +621,30 @@ class YaVideoPlayerController {
   }
 
   Widget getView() {
-    return _interface!.getView(_textureId);
+    if (kIsWeb) {
+      return _interface!.getView(_textureId);
+    }
+    switch (player) {
+      case Player.yoyo:
+        {
+          return _yoYoPlayer!;
+        }
+      case Player.ijk:
+        {
+          return FijkView(
+            player: _fijkPlayer!,
+          );
+        }
+
+      case Player.ext:
+        {
+          return VideoPlayer(_extPlayer!);
+        }
+      case Player.flv:
+      default:
+        {
+          return VideoPlayer(_flvPlayer!);
+        }
+    }
   }
 }
