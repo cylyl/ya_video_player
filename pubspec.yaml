@@ -64,11 +64,14 @@ flutter:
   # https://flutter.dev/assets-and-images/#resolution-aware.
 
   assets:
-    - assets/ya-video-player.js
+    - assets/flv.js
     - assets/flv.min.js
-    - assets/video.min.js
+    - assets/flv.min.js.map
+    - assets/video.js
     - assets/video-js.css
     - assets/videojs-flvjs.js
+    - assets/video.min.js
+    - assets/ya-video-player.js
 
   # To add custom fonts to your plugin package, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a
